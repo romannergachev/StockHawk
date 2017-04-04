@@ -1,6 +1,10 @@
 package com.udacity.stockhawk.ui;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.database.Cursor;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -8,14 +12,18 @@ import android.os.Bundle;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.widget.SwipeRefreshLayout;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.helper.ItemTouchHelper;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -47,6 +55,9 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     @Override
     public void onClick(String symbol) {
         Timber.d("Symbol clicked: %s", symbol);
+        Intent intent = new Intent(this, DetailActivity.class);
+        intent.putExtra(getString(R.string.intent_symbol_value), symbol);
+        startActivity(intent);
     }
 
     @Override
@@ -81,7 +92,43 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
             }
         }).attachToRecyclerView(stockRecyclerView);
 
+        LocalBroadcastManager.getInstance(this).registerReceiver(messageReceiver,
+            new IntentFilter(getString(R.string.broadcast_error_load_stock)));
 
+
+    }
+
+    @Override
+    protected void onDestroy() {
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(messageReceiver);
+        super.onDestroy();
+    }
+
+    private BroadcastReceiver messageReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            // Get extra data included in the Intent
+            String message = intent.getStringExtra("message");
+            Log.d("receiver", "Got message: " + message);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    showAlerDialog();
+                }
+            });
+        }
+    };
+
+    private void showAlerDialog() {
+        new AlertDialog.Builder(this)
+            .setTitle(getString(R.string.stock_not_found))
+            .setMessage(getString(R.string.stock_not_found_detail))
+            .setNeutralButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int which) {
+                }
+            })
+            .setIcon(android.R.drawable.ic_dialog_alert)
+            .show();
     }
 
     private boolean networkUp() {
